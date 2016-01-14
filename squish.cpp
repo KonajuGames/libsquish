@@ -51,7 +51,7 @@ static int FixFlags( int flags )
     return method | fit | extra;
 }
 
-void CompressMasked( u8 const* rgba, int mask, void* block, int flags, float* metric )
+void CompressMasked( float const* bgra, int mask, void* block, int flags, float* metric )
 {
     // fix any bad flags
     flags = FixFlags( flags );
@@ -63,7 +63,7 @@ void CompressMasked( u8 const* rgba, int mask, void* block, int flags, float* me
         colourBlock = reinterpret_cast< u8* >( block ) + 8;
 
     // create the minimal point set
-    ColourSet colours( rgba, mask, flags );
+    ColourSet colours( bgra, mask, flags );
 
     // check the compression type and compress colour
     if( colours.GetCount() == 1 )
@@ -87,12 +87,12 @@ void CompressMasked( u8 const* rgba, int mask, void* block, int flags, float* me
 
     // compress alpha separately if necessary
     if( ( flags & kDxt3 ) != 0 )
-        CompressAlphaDxt3( rgba, mask, alphaBock );
+        CompressAlphaDxt3( bgra, mask, alphaBock );
     else if( ( flags & kDxt5 ) != 0 )
-        CompressAlphaDxt5( rgba, mask, alphaBock );
+        CompressAlphaDxt5( bgra, mask, alphaBock );
 }
 
-void Decompress( u8* rgba, void const* block, int flags )
+void Decompress( float* bgra, void const* block, int flags )
 {
     // fix any bad flags
     flags = FixFlags( flags );
@@ -104,13 +104,13 @@ void Decompress( u8* rgba, void const* block, int flags )
         colourBlock = reinterpret_cast< u8 const* >( block ) + 8;
 
     // decompress colour
-    DecompressColour( rgba, colourBlock, ( flags & kDxt1 ) != 0 );
+    DecompressColour( bgra, colourBlock, ( flags & kDxt1 ) != 0 );
 
     // decompress alpha separately if necessary
     if( ( flags & kDxt3 ) != 0 )
-        DecompressAlphaDxt3( rgba, alphaBock );
+        DecompressAlphaDxt3( bgra, alphaBock );
     else if( ( flags & kDxt5 ) != 0 )
-        DecompressAlphaDxt5( rgba, alphaBock );
+        DecompressAlphaDxt5( bgra, alphaBock );
 }
 
 int GetStorageRequirements( int width, int height, int flags )
@@ -124,7 +124,7 @@ int GetStorageRequirements( int width, int height, int flags )
     return blockcount*blocksize;
 }
 
-void CompressImage( u8 const* rgba, int width, int height, void* blocks, int flags, float* metric )
+void CompressImage( float const* bgra, int width, int height, void* blocks, int flags, float* metric )
 {
     // fix any bad flags
     flags = FixFlags( flags );
@@ -139,8 +139,8 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
         for( int x = 0; x < width; x += 4 )
         {
             // build the 4x4 block of pixels
-            u8 sourceRgba[16*4];
-            u8* targetPixel = sourceRgba;
+            float sourceBgra[16*4];
+            float* targetPixel = sourceBgra;
             int mask = 0;
             for( int py = 0; py < 4; ++py )
             {
@@ -153,8 +153,8 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
                     // enable if we're in the image
                     if( sx < width && sy < height )
                     {
-                        // copy the rgba value
-                        u8 const* sourcePixel = rgba + 4*( width*sy + sx );
+                        // copy the bgra value
+                        float const* sourcePixel = bgra + 4*( width*sy + sx );
                         for( int i = 0; i < 4; ++i )
                             *targetPixel++ = *sourcePixel++;
 
@@ -170,7 +170,7 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
             }
 
             // compress it into the output
-            CompressMasked( sourceRgba, mask, targetBlock, flags, metric );
+            CompressMasked( sourceBgra, mask, targetBlock, flags, metric );
 
             // advance
             targetBlock += bytesPerBlock;
@@ -178,7 +178,7 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
     }
 }
 
-void DecompressImage( u8* rgba, int width, int height, void const* blocks, int flags )
+void DecompressImage( float* bgra, int width, int height, void const* blocks, int flags )
 {
     // fix any bad flags
     flags = FixFlags( flags );
@@ -193,11 +193,11 @@ void DecompressImage( u8* rgba, int width, int height, void const* blocks, int f
         for( int x = 0; x < width; x += 4 )
         {
             // decompress the block
-            u8 targetRgba[4*16];
-            Decompress( targetRgba, sourceBlock, flags );
+            float targetBgra[4*16];
+            Decompress( targetBgra, sourceBlock, flags );
 
             // write the decompressed pixels to the correct image locations
-            u8 const* sourcePixel = targetRgba;
+            float const* sourcePixel = targetBgra;
             for( int py = 0; py < 4; ++py )
             {
                 for( int px = 0; px < 4; ++px )
@@ -207,7 +207,7 @@ void DecompressImage( u8* rgba, int width, int height, void const* blocks, int f
                     int sy = y + py;
                     if( sx < width && sy < height )
                     {
-                        u8* targetPixel = rgba + 4*( width*sy + sx );
+                        float* targetPixel = bgra + 4*( width*sy + sx );
 
                         // copy the rgba value
                         for( int i = 0; i < 4; ++i )
@@ -228,3 +228,34 @@ void DecompressImage( u8* rgba, int width, int height, void const* blocks, int f
 }
 
 } // namespace squish
+
+void squishCompressMasked( float const* bgra, int mask, void* block, int flags, float* metric )
+{
+    squish::CompressMasked( bgra, mask, block, flags, metric );
+}
+
+void squishCompress( float const* bgra, void* block, int flags, float* metric )
+{
+    squish::CompressMasked( bgra, 0xffff, block, flags, metric );
+}
+
+void squishDecompress( float* bgra, void const* block, int flags )
+{
+    squish::Decompress( bgra, block, flags );
+}
+
+int squishGetStorageRequirements( int width, int height, int flags )
+{
+    return squish::GetStorageRequirements( width, height, flags );
+}
+
+void squishCompressImage( float const* bgra, int width, int height, void* blocks, int flags, float* metric )
+{
+    squish::CompressImage( bgra, width, height, blocks, flags, metric );
+}
+
+void squishDecompressImage( float* bgra, int width, int height, void const* blocks, int flags )
+{
+    squish::DecompressImage( bgra, width, height, blocks, flags );
+}
+

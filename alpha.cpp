@@ -45,7 +45,7 @@ static int FloatToInt( float a, int limit )
     return i;
 }
 
-void CompressAlphaDxt3( u8 const* rgba, int mask, void* block )
+void CompressAlphaDxt3( float const* bgra, int mask, void* block )
 {
     u8* bytes = reinterpret_cast< u8* >( block );
 
@@ -53,8 +53,8 @@ void CompressAlphaDxt3( u8 const* rgba, int mask, void* block )
     for( int i = 0; i < 8; ++i )
     {
         // quantise down to 4 bits
-        float alpha1 = ( float )rgba[8*i + 3] * ( 15.0f/255.0f );
-        float alpha2 = ( float )rgba[8*i + 7] * ( 15.0f/255.0f );
+        float alpha1 = bgra[8*i + 3] * 15.0f;
+        float alpha2 = bgra[8*i + 7] * 15.0f;
         int quant1 = FloatToInt( alpha1, 15 );
         int quant2 = FloatToInt( alpha2, 15 );
 
@@ -71,7 +71,7 @@ void CompressAlphaDxt3( u8 const* rgba, int mask, void* block )
     }
 }
 
-void DecompressAlphaDxt3( u8* rgba, void const* block )
+void DecompressAlphaDxt3( float* bgra, void const* block )
 {
     u8 const* bytes = reinterpret_cast< u8 const* >( block );
 
@@ -86,8 +86,8 @@ void DecompressAlphaDxt3( u8* rgba, void const* block )
         u8 hi = quant & 0xf0;
 
         // convert back up to bytes
-        rgba[8*i + 3] = lo | ( lo << 4 );
-        rgba[8*i + 7] = hi | ( hi >> 4 );
+        bgra[8*i + 3] = ( lo | ( lo << 4 ) ) / 255.0f;
+        bgra[8*i + 7] = ( hi | ( hi >> 4 ) ) / 255.0f;
     }
 }
 
@@ -99,7 +99,7 @@ static void FixRange( int& min, int& max, int steps )
         min = std::max( 0, max - steps );
 }
 
-static int FitCodes( u8 const* rgba, int mask, u8 const* codes, u8* indices )
+static int FitCodes( float const* bgra, int mask, u8 const* codes, u8* indices )
 {
     // fit each alpha value to the codebook
     int err = 0;
@@ -115,7 +115,7 @@ static int FitCodes( u8 const* rgba, int mask, u8 const* codes, u8* indices )
         }
 
         // find the least error and corresponding index
-        int value = rgba[4*i + 3];
+        int value = ( int )( bgra[4*i + 3] * 255 );
         int least = INT_MAX;
         int index = 0;
         for( int j = 0; j < 8; ++j )
@@ -229,7 +229,7 @@ static void WriteAlphaBlock7( int alpha0, int alpha1, u8 const* indices, void* b
     }
 }
 
-void CompressAlphaDxt5( u8 const* rgba, int mask, void* block )
+void CompressAlphaDxt5( float const* bgra, int mask, void* block )
 {
     // get the range for 5-alpha and 7-alpha interpolation
     int min5 = 255;
@@ -244,7 +244,7 @@ void CompressAlphaDxt5( u8 const* rgba, int mask, void* block )
             continue;
 
         // incorporate into the min/max
-        int value = rgba[4*i + 3];
+        int value = ( int )( bgra[4*i + 3] * 255 );
         if( value < min7 )
             min7 = value;
         if( value > max7 )
@@ -284,8 +284,8 @@ void CompressAlphaDxt5( u8 const* rgba, int mask, void* block )
     // fit the data to both code books
     u8 indices5[16];
     u8 indices7[16];
-    int err5 = FitCodes( rgba, mask, codes5, indices5 );
-    int err7 = FitCodes( rgba, mask, codes7, indices7 );
+    int err5 = FitCodes( bgra, mask, codes5, indices5 );
+    int err7 = FitCodes( bgra, mask, codes7, indices7 );
 
     // save the block with least error
     if( err5 <= err7 )
@@ -294,7 +294,7 @@ void CompressAlphaDxt5( u8 const* rgba, int mask, void* block )
         WriteAlphaBlock7( min7, max7, indices7, block );
 }
 
-void DecompressAlphaDxt5( u8* rgba, void const* block )
+void DecompressAlphaDxt5( float* bgra, void const* block )
 {
     // get the two alpha values
     u8 const* bytes = reinterpret_cast< u8 const* >( block );
@@ -344,7 +344,7 @@ void DecompressAlphaDxt5( u8* rgba, void const* block )
 
     // write out the indexed codebook values
     for( int i = 0; i < 16; ++i )
-        rgba[4*i + 3] = codes[indices[i]];
+        bgra[4*i + 3] = ( float )( codes[indices[i]] / 255.0f );
 }
 
 } // namespace squish

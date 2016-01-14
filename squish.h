@@ -64,14 +64,14 @@ enum
 
 /*! @brief Compresses a 4x4 block of pixels.
 
-    @param rgba   The rgba values of the 16 source pixels.
+    @param bgra   The bgra values of the 16 source pixels.
     @param mask   The valid pixel mask.
     @param block  Storage for the compressed DXT block.
     @param flags  Compression flags.
     @param metric An optional perceptual metric.
 
     The source pixels should be presented as a contiguous array of 16 rgba
-    values, with each component as 1 byte each. In memory this should be:
+    values, with each component as 1 float each. In memory this should be:
 
         { r1, g1, b1, a1, .... , r16, g16, b16, a16 }
 
@@ -104,19 +104,19 @@ enum
     { 0.2126f, 0.7152f, 0.0722f }. If non-NULL, the metric should point to a
     contiguous array of 3 floats.
 */
-void CompressMasked( u8 const* rgba, int mask, void* block, int flags, float* metric = 0 );
+void CompressMasked( float const* bgra, int mask, void* block, int flags, float* metric = 0 );
 
 // -----------------------------------------------------------------------------
 
 /*! @brief Compresses a 4x4 block of pixels.
 
-    @param rgba   The rgba values of the 16 source pixels.
+    @param bgra   The bgra values of the 16 source pixels.
     @param block  Storage for the compressed DXT block.
     @param flags  Compression flags.
     @param metric An optional perceptual metric.
 
     The source pixels should be presented as a contiguous array of 16 rgba
-    values, with each component as 1 byte each. In memory this should be:
+    values, with each component as 1 float each. In memory this should be:
 
         { r1, g1, b1, a1, .... , r16, g16, b16, a16 }
 
@@ -145,21 +145,21 @@ void CompressMasked( u8 const* rgba, int mask, void* block, int flags, float* me
     This method is an inline that calls CompressMasked with a mask of 0xffff,
     provided for compatibility with older versions of squish.
 */
-inline void Compress( u8 const* rgba, void* block, int flags, float* metric = 0 )
+inline void Compress( float const* bgra, void* block, int flags, float* metric = 0 )
 {
-    CompressMasked( rgba, 0xffff, block, flags, metric );
+    CompressMasked( bgra, 0xffff, block, flags, metric );
 }
 
 // -----------------------------------------------------------------------------
 
 /*! @brief Decompresses a 4x4 block of pixels.
 
-    @param rgba  Storage for the 16 decompressed pixels.
+    @param bgra  Storage for the 16 decompressed pixels.
     @param block The compressed DXT block.
     @param flags Compression flags.
 
     The decompressed pixels will be written as a contiguous array of 16 rgba
-    values, with each component as 1 byte each. In memory this is:
+    values, with each component as 1 float each. In memory this is:
 
         { r1, g1, b1, a1, .... , r16, g16, b16, a16 }
 
@@ -167,7 +167,7 @@ inline void Compress( u8 const* rgba, void* block, int flags, float* metric = 0 
     however, DXT1 will be used by default if none is specified. All other flags
     are ignored.
 */
-void Decompress( u8* rgba, void const* block, int flags );
+void Decompress( float* bgra, void const* block, int flags );
 
 // -----------------------------------------------------------------------------
 
@@ -191,7 +191,7 @@ int GetStorageRequirements( int width, int height, int flags );
 
 /*! @brief Compresses an image in memory.
 
-    @param rgba   The pixels of the source.
+    @param bgra   The pixels of the source.
     @param width  The width of the source image.
     @param height The height of the source image.
     @param blocks Storage for the compressed output.
@@ -199,7 +199,7 @@ int GetStorageRequirements( int width, int height, int flags );
     @param metric An optional perceptual metric.
 
     The source pixels should be presented as a contiguous array of width*height
-    rgba values, with each component as 1 byte each. In memory this should be:
+    rgba values, with each component as 1 float each. In memory this should be:
 
         { r1, g1, b1, a1, .... , rn, gn, bn, an } for n = width*height
 
@@ -230,20 +230,20 @@ int GetStorageRequirements( int width, int height, int flags );
     squish::GetStorageRequirements can be called to compute the amount of memory
     to allocate for the compressed output.
 */
-void CompressImage( u8 const* rgba, int width, int height, void* blocks, int flags, float* metric = 0 );
+void CompressImage( float const* bgra, int width, int height, void* blocks, int flags, float* metric = 0 );
 
 // -----------------------------------------------------------------------------
 
 /*! @brief Decompresses an image in memory.
 
-    @param rgba   Storage for the decompressed pixels.
+    @param bgra   Storage for the decompressed pixels.
     @param width  The width of the source image.
     @param height The height of the source image.
     @param blocks The compressed DXT blocks.
     @param flags  Compression flags.
 
     The decompressed pixels will be written as a contiguous array of width*height
-    16 rgba values, with each component as 1 byte each. In memory this is:
+    16 rgba values, with each component as 1 float each. In memory this is:
 
         { r1, g1, b1, a1, .... , rn, gn, bn, an } for n = width*height
 
@@ -253,11 +253,21 @@ void CompressImage( u8 const* rgba, int width, int height, void* blocks, int fla
 
     Internally this function calls squish::Decompress for each block.
 */
-void DecompressImage( u8* rgba, int width, int height, void const* blocks, int flags );
+void DecompressImage( float* bgra, int width, int height, void const* blocks, int flags );
 
 // -----------------------------------------------------------------------------
 
 } // namespace squish
+
+extern "C"
+{
+    void squishCompressMasked( float const* bgra, int mask, void* block, int flags, float* metric );
+    void squishCompress( float const* bgra, void* block, int flags, float* metric );
+    void squishDecompress( float* bgra, void const* block, int flags );
+    int squishGetStorageRequirements( int width, int height, int flags );
+    void squishCompressImage( float const* bgra, int width, int height, void* blocks, int flags, float* metric );
+    void squishDecompressImage( float* bgra, int width, int height, void const* blocks, int flags );
+}
 
 #endif // ndef SQUISH_H
 

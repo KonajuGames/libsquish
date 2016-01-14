@@ -45,9 +45,9 @@ static int FloatToInt( float a, int limit )
 static int FloatTo565( Vec3::Arg colour )
 {
     // get the components in the correct range
-    int r = FloatToInt( 31.0f*colour.X(), 31 );
+    int b = FloatToInt( 31.0f*colour.X(), 31 );
     int g = FloatToInt( 63.0f*colour.Y(), 63 );
-    int b = FloatToInt( 31.0f*colour.Z(), 31 );
+    int r = FloatToInt( 31.0f*colour.Z(), 31 );
 
     // pack into a single value
     return ( r << 11 ) | ( g << 5 ) | b;
@@ -148,16 +148,16 @@ static int Unpack565( u8 const* packed, u8* colour )
     u8 blue = ( u8 )( value & 0x1f );
 
     // scale up to 8 bits
-    colour[0] = ( red << 3 ) | ( red >> 2 );
+    colour[2] = ( red << 3 ) | ( red >> 2 );
     colour[1] = ( green << 2 ) | ( green >> 4 );
-    colour[2] = ( blue << 3 ) | ( blue >> 2 );
+    colour[0] = ( blue << 3 ) | ( blue >> 2 );
     colour[3] = 255;
 
     // return the value
     return value;
 }
 
-void DecompressColour( u8* rgba, void const* block, bool isDxt1 )
+void DecompressColour( float* bgra, void const* block, bool isDxt1 )
 {
     // get the block bytes
     u8 const* bytes = reinterpret_cast< u8 const* >( block );
@@ -207,7 +207,7 @@ void DecompressColour( u8* rgba, void const* block, bool isDxt1 )
     {
         u8 offset = 4*indices[i];
         for( int j = 0; j < 4; ++j )
-            rgba[4*i + j] = codes[offset + j];
+            bgra[4*i + j] = codes[offset + j];
     }
 }
 

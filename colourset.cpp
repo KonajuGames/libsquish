@@ -27,7 +27,7 @@
 
 namespace squish {
 
-ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
+ColourSet::ColourSet( float const* bgra, int mask, int flags )
   : m_count( 0 ),
     m_transparent( false )
 {
@@ -47,7 +47,7 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
         }
 
         // check for transparent pixels when using dxt1
-        if( isDxt1 && rgba[4*i + 3] < 128 )
+        if( isDxt1 && bgra[4*i + 3] < 0.5f )
         {
             m_remap[i] = -1;
             m_transparent = true;
@@ -61,12 +61,13 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
             if( j == i )
             {
                 // normalise coordinates to [0,1]
-                float x = ( float )rgba[4*i] / 255.0f;
-                float y = ( float )rgba[4*i + 1] / 255.0f;
-                float z = ( float )rgba[4*i + 2] / 255.0f;
+                float z = bgra[4*i + 0];
+                float y = bgra[4*i + 1];
+                float x = bgra[4*i + 2];
 
                 // ensure there is always non-zero weight even for zero alpha
-                float w = ( float )( rgba[4*i + 3] + 1 ) / 256.0f;
+                // transforms 0.0-1.0 to 0.0039-1.0
+                float w = (bgra[4*i + 3] + (1.0 / 256.0f)) * (255.0f / 256.0f);
 
                 // add the point
                 m_points[m_count] = Vec3( x, y, z );
@@ -81,17 +82,17 @@ ColourSet::ColourSet( u8 const* rgba, int mask, int flags )
             // check for a match
             int oldbit = 1 << j;
             bool match = ( ( mask & oldbit ) != 0 )
-                && ( rgba[4*i] == rgba[4*j] )
-                && ( rgba[4*i + 1] == rgba[4*j + 1] )
-                && ( rgba[4*i + 2] == rgba[4*j + 2] )
-                && ( rgba[4*j + 3] >= 128 || !isDxt1 );
+                && ( bgra[4*i] == bgra[4*j] )
+                && ( bgra[4*i + 1] == bgra[4*j + 1] )
+                && ( bgra[4*i + 2] == bgra[4*j + 2] )
+                && ( bgra[4*j + 3] >= 0.5f || !isDxt1 );
             if( match )
             {
                 // get the index of the match
                 int index = m_remap[j];
 
                 // ensure there is always non-zero weight even for zero alpha
-                float w = ( float )( rgba[4*i + 3] + 1 ) / 256.0f;
+                float w = ( float )( bgra[4*i + 3] + 1 ) / 256.0f;
 
                 // map to this point and increase the weight
                 m_weights[index] += ( weightByAlpha ? w : 1.0f );

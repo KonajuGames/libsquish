@@ -36,7 +36,7 @@ namespace squish {
 class ColourSet
 {
 public:
-    ColourSet( u8 const* rgba, int mask, int flags );
+    ColourSet( float const* bgra, int mask, int flags );
 
     int GetCount() const { return m_count; }
     Vec3 const* GetPoints() const { return m_points; }
