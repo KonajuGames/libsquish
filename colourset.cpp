@@ -67,7 +67,9 @@ ColourSet::ColourSet( float const* bgra, int mask, int flags )
 
                 // ensure there is always non-zero weight even for zero alpha
                 // transforms 0.0-1.0 to 0.0039-1.0
-                float w = (bgra[4*i + 3] + (1.0 / 256.0f)) * (255.0f / 256.0f);
+                float w = bgra[4*i + 3];
+                if (w == 0.0f)
+                    w = 1.0f / 256.0f;
 
                 // add the point
                 m_points[m_count] = Vec3( x, y, z );
@@ -92,8 +94,9 @@ ColourSet::ColourSet( float const* bgra, int mask, int flags )
                 int index = m_remap[j];
 
                 // ensure there is always non-zero weight even for zero alpha
-                float w = ( float )( bgra[4*i + 3] + 1 ) / 256.0f;
-
+                float w = bgra[4*i + 3];
+                if (w == 0.0f)
+                    w = 1.0f / 256.0f;
                 // map to this point and increase the weight
                 m_weights[index] += ( weightByAlpha ? w : 1.0f );
                 m_remap[i] = index;
